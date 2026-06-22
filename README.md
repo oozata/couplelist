@@ -1,2 +1,2 @@
-# ortak-alisveris-listesi
+# CoupleList
 Eşler için ortak alışveriş listesi uygulaması
