@@ -289,7 +289,6 @@
             box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4);
         }
 
-        /* Listelerim Kartları */
         .list-card {
             display: flex;
             align-items: center;
@@ -364,7 +363,6 @@
             font-size: 14px;
         }
 
-        /* Listelerim Ekranı */
         .lists-screen {
             padding: 20px;
         }
@@ -1184,14 +1182,13 @@
             </div>
 
             <div class="user-info">
-                <div class="user-avatar" id="userAvatar">👤</div>
+                <div class="user-avatar" id="userAvatar"></div>
                 <div class="user-details">
                     <h3 id="userName">Kullanıcı</h3>
                     <p id="userEmail">email@example.com</p>
                 </div>
             </div>
 
-            <!-- Listelerim Butonu -->
             <div class="settings-section">
                 <button class="setting-btn" onclick="showMyListsScreen()" style="padding: 18px;">
                     <span class="setting-icon">📋</span>
@@ -1200,7 +1197,6 @@
                 </button>
             </div>
 
-            <!-- Yeni Liste Butonu -->
             <div class="settings-section">
                 <button class="action-btn shared" onclick="showNewListModal()">
                     <span>➕</span>
@@ -1208,7 +1204,6 @@
                 </button>
             </div>
 
-            <!-- Ayarlar -->
             <div class="settings-section">
                 <h3>Ayarlar</h3>
                 <button class="setting-btn" onclick="showColorPicker()">
@@ -1277,12 +1272,12 @@
         <!-- Main List Screen -->
         <div id="mainList" class="screen">
             <div class="header">
-                <button onclick="backToDashboard()">🏠 Ana Menü</button>
+                <button onclick="backToDashboard()"> Ana Menü</button>
                 <span id="headerTitle">
                     Listem
                     <span class="list-type-badge personal" id="listTypeBadge">Kişisel</span>
                 </span>
-                <button onclick="showRoomCode()" id="roomCodeBtn" style="display: none;">🔑 Kod</button>
+                <button onclick="showRoomCode()" id="roomCodeBtn" style="display: none;"> Kod</button>
             </div>
             <div class="list-container" id="listContainer">
                 <div class="loading">
@@ -1397,7 +1392,7 @@
                     <div class="form-group">
                         <label class="urgent-toggle">
                             <input type="checkbox" id="urgentCheck2">
-                            <span> Acil İhtiyaç</span>
+                            <span>🚨 Acil İhtiyaç</span>
                         </label>
                     </div>
 
@@ -1547,6 +1542,11 @@
         let editUnit = 'Adet';
 
         const PRODUCTS_URL = "https://raw.githubusercontent.com/oozata/ortak-alisveris-listesi/refs/heads/main/products.json";
+
+        // Bildirim izni iste
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
 
         function applyThemeColor(color) {
             document.documentElement.style.setProperty('--primary-color', color);
@@ -1725,7 +1725,6 @@
                 
                 let html = '';
                 
-                // Kişisel liste
                 html += `
                     <div class="list-card personal" onclick="openPersonalList()">
                         <div class="list-icon">📝</div>
@@ -1737,7 +1736,6 @@
                     </div>
                 `;
                 
-                // Paylaşımlı listeler
                 if (joinedRooms.length === 0) {
                     html += `
                         <div class="no-lists">
@@ -1875,7 +1873,6 @@
             loadMyLists();
         };
 
-        // Yeni Liste Modal
         window.showNewListModal = function() {
             document.getElementById('newListModal').classList.add('active');
         };
@@ -1915,6 +1912,11 @@
                 currentUser.notificationsMuted = newStatus;
                 document.getElementById('notificationsStatus').textContent = newStatus ? 'Açık' : 'Kapalı';
                 document.getElementById('notificationsBtn').classList.toggle('active', !newStatus);
+                
+                if (newStatus && 'Notification' in window && Notification.permission === 'default') {
+                    Notification.requestPermission();
+                }
+                
                 showToast(newStatus ? 'Bildirimler açıldı' : 'Bildirimler kapatıldı');
             } catch (error) {
                 console.error("Bildirim hatası:", error);
@@ -2104,6 +2106,60 @@
             return colorMap[colorCode] || 'yellow';
         }
 
+        // Gerçek bildirim sistemi
+        function playNotificationSound() {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                oscillator.frequency.value = 800;
+                oscillator.type = 'sine';
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.5);
+            } catch (error) {
+                console.error("Ses çalınamadı:", error);
+            }
+        }
+
+        function showBrowserNotification(title, body) {
+            if ('Notification' in window && Notification.permission === 'granted') {
+                try {
+                    const notification = new Notification(title, {
+                        body: body,
+                        icon: '🛒',
+                        badge: '🛒',
+                        tag: 'couplelist-notification',
+                        requireInteraction: false
+                    });
+                    
+                    notification.onclick = function() {
+                        window.focus();
+                        notification.close();
+                    };
+                    
+                    setTimeout(() => notification.close(), 5000);
+                } catch (error) {
+                    console.error("Bildirim gösterilemedi:", error);
+                }
+            }
+        }
+
+        function triggerNotification(title, body) {
+            if (currentUser && !currentUser.notificationsMuted) {
+                playNotificationSound();
+                showToast(body);
+                
+                // Sekme arka plandaysa tarayıcı bildirimi göster
+                if (document.hidden) {
+                    showBrowserNotification(title, body);
+                }
+            }
+        }
+
         function startListeningToItems() {
             if (unsubscribeItems) unsubscribeItems();
             let q;
@@ -2113,6 +2169,25 @@
                 q = query(collection(db, "rooms", currentRoomId, "items"), orderBy("createdAt", "desc"));
             }
             unsubscribeItems = onSnapshot(q, (snapshot) => {
+                snapshot.docChanges().forEach((change) => {
+                    if (change.type === 'added' && change.doc.metadata.hasPendingWrites === false) {
+                        const data = change.doc.data();
+                        if (data.ekleyen && data.ekleyen !== currentUser.displayName) {
+                            triggerNotification(
+                                'Yeni Ürün Eklendi',
+                                `${data.ekleyen} "${data.ad}" ekledi`
+                            );
+                        }
+                    } else if (change.type === 'modified') {
+                        const data = change.doc.data();
+                        if (data.alan && data.alan !== currentUser.displayName && data.alindi) {
+                            triggerNotification(
+                                'Ürün Alındı',
+                                `${data.alan} "${data.ad}" ürününü aldı`
+                            );
+                        }
+                    }
+                });
                 renderList(snapshot.docs);
             }, (error) => {
                 console.error("Dinleme hatası:", error);
@@ -2388,24 +2463,6 @@
             setTimeout(() => toast.classList.remove('show'), 3000);
         }
         window.showToast = showToast;
-
-        function playNotificationSound() {
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            oscillator.frequency.value = 800;
-            oscillator.type = 'sine';
-            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + 0.5);
-        }
-
-        if ('Notification' in window && Notification.permission === 'default') {
-            Notification.requestPermission();
-        }
 
         loadProducts();
     </script>
