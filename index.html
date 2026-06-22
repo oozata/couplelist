@@ -151,7 +151,7 @@
 
         .dashboard-header {
             text-align: center;
-            margin-bottom: 40px;
+            margin-bottom: 30px;
         }
 
         .dashboard-header h1 {
@@ -287,6 +287,81 @@
             background: var(--primary-hover);
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4);
+        }
+
+        /* Listelerim Kartları */
+        .list-card {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 18px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 15px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .list-card:hover {
+            border-color: var(--primary-color);
+            background: #fffde7;
+            transform: translateX(4px);
+        }
+
+        .list-card.personal {
+            border-left: 6px solid #2196F3;
+        }
+
+        .list-card.shared {
+            border-left: 6px solid var(--primary-color);
+        }
+
+        .list-card .list-icon {
+            font-size: 32px;
+            flex-shrink: 0;
+        }
+
+        .list-card .list-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .list-card .list-name {
+            font-weight: bold;
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .list-card .list-meta {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .list-card .list-badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .list-card .list-badge.personal {
+            background: #E3F2FD;
+            color: #2196F3;
+        }
+
+        .list-card .list-badge.shared {
+            background: #FFF9C4;
+            color: #F57F17;
+        }
+
+        .no-lists {
+            text-align: center;
+            padding: 30px;
+            color: #999;
+            font-size: 14px;
         }
 
         .room-screen {
@@ -984,7 +1059,6 @@
             color: white;
         }
 
-        /* Edit Modal Styles */
         .edit-modal-content {
             text-align: left;
             max-height: 80vh;
@@ -1085,6 +1159,16 @@
             </div>
 
             <div class="settings-section">
+                <h3>Listelerim</h3>
+                <div id="myListsContainer">
+                    <div class="loading" style="padding: 20px;">
+                        <div class="spinner"></div>
+                        <p>Yükleniyor...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-section">
                 <h3>Ayarlar</h3>
                 <button class="setting-btn" onclick="showColorPicker()">
                     <span class="setting-icon">🎨</span>
@@ -1099,7 +1183,7 @@
             </div>
 
             <div class="settings-section">
-                <h3>Listeler</h3>
+                <h3>Yeni Liste</h3>
                 <button class="action-btn personal" onclick="createPersonalList()">
                     <span>📝</span>
                     <span>Kişisel Liste Oluştur</span>
@@ -1174,7 +1258,7 @@
             <div class="add-form">
                 <div id="searchSection">
                     <div class="search-container">
-                        <span class="search-icon"></span>
+                        <span class="search-icon">🔍</span>
                         <input type="text" class="search-input" id="searchInput" placeholder="Ürün ara... (örn: süt, ekmek, şampuan)" oninput="handleSearch()">
                     </div>
 
@@ -1224,7 +1308,7 @@
                     <div class="form-group">
                         <label class="urgent-toggle">
                             <input type="checkbox" id="urgentCheck">
-                            <span> Acil İhtiyaç</span>
+                            <span>🚨 Acil İhtiyaç</span>
                         </label>
                     </div>
 
@@ -1336,7 +1420,7 @@
             <div class="form-group">
                 <label class="urgent-toggle">
                     <input type="checkbox" id="editUrgentCheck">
-                    <span> Acil İhtiyaç</span>
+                    <span>🚨 Acil İhtiyaç</span>
                 </label>
             </div>
 
@@ -1356,7 +1440,7 @@
 
     <!-- FAB -->
     <button class="fab" id="fab" style="display: none;" onclick="showAddProduct()">
-        <span></span>
+        <span>➕</span>
         <span>Ürün Ekle</span>
     </button>
 
@@ -1392,8 +1476,6 @@
         let selectedColor = '#FFC107';
         let selectedProduct = null;
         let isCustomProduct = false;
-
-        // Edit modal için değişkenler
         let editingItemId = null;
         let editQuantity = 1;
         let editUnit = 'Adet';
@@ -1445,6 +1527,8 @@
                 kategoriAd: kategori.ad,
                 kategoriIkon: kategori.ikon
             }));
+            document.getElementById('categoryListSection').style.display = 'none';
+            document.getElementById('searchResultsSection').style.display = 'block';
             renderSearchResults(results, kategori.ad);
         };
 
@@ -1554,6 +1638,101 @@
             await setDoc(doc(db, "users", currentUser.uid), data, { merge: true });
         }
 
+        // Kullanıcının katıldığı odaları kaydet
+        async function addRoomToUser(roomId) {
+            const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+            const userData = userDoc.data() || {};
+            const joinedRooms = userData.joinedRooms || [];
+            
+            if (!joinedRooms.includes(roomId)) {
+                joinedRooms.push(roomId);
+                await saveUserData({ joinedRooms: joinedRooms });
+            }
+        }
+
+        // Listeleri yükle
+        async function loadMyLists() {
+            const container = document.getElementById('myListsContainer');
+            
+            try {
+                const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+                const userData = userDoc.data() || {};
+                const joinedRooms = userData.joinedRooms || [];
+                
+                let html = '';
+                
+                // Kişisel liste
+                html += `
+                    <div class="list-card personal" onclick="openPersonalList()">
+                        <div class="list-icon">📝</div>
+                        <div class="list-info">
+                            <div class="list-name">Kişisel Listem</div>
+                            <div class="list-meta">Sadece sen görebilirsin</div>
+                        </div>
+                        <div class="list-badge personal">Kişisel</div>
+                    </div>
+                `;
+                
+                // Paylaşımlı listeler
+                if (joinedRooms.length === 0) {
+                    html += `
+                        <div class="no-lists">
+                            Henüz paylaşımlı listen yok.<br>
+                            "Paylaşımlı Liste Oluştur" butonunu kullan.
+                        </div>
+                    `;
+                } else {
+                    for (const roomId of joinedRooms) {
+                        const roomDoc = await getDoc(doc(db, "rooms", roomId));
+                        if (roomDoc.exists()) {
+                            const roomData = roomDoc.data();
+                            const membersRef = collection(db, "rooms", roomId, "members");
+                            const membersSnapshot = await getDocs(membersRef);
+                            const memberCount = membersSnapshot.size;
+                            
+                            html += `
+                                <div class="list-card shared" onclick="openSharedList('${roomId}')">
+                                    <div class="list-icon">👥</div>
+                                    <div class="list-info">
+                                        <div class="list-name">Paylaşımlı Liste</div>
+                                        <div class="list-meta">${memberCount} kişi • Kod: ${roomId}</div>
+                                    </div>
+                                    <div class="list-badge shared">Ortak</div>
+                                </div>
+                            `;
+                        }
+                    }
+                }
+                
+                container.innerHTML = html;
+            } catch (error) {
+                console.error("Listeler yüklenemedi:", error);
+                container.innerHTML = '<div class="no-lists">Listeler yüklenemedi</div>';
+            }
+        }
+
+        window.openPersonalList = async function() {
+            currentListType = 'personal';
+            currentRoomId = null;
+            await saveUserData({ currentListType: 'personal', currentRoomId: null });
+            showScreen('mainList');
+            document.getElementById('headerTitle').innerHTML = 'Listem <span class="list-type-badge personal">Kişisel</span>';
+            document.getElementById('roomCodeBtn').style.display = 'none';
+            document.getElementById('fab').style.display = 'flex';
+            startListeningToItems();
+        };
+
+        window.openSharedList = async function(roomId) {
+            currentListType = 'shared';
+            currentRoomId = roomId;
+            await saveUserData({ currentListType: 'shared', currentRoomId: roomId });
+            showScreen('mainList');
+            document.getElementById('headerTitle').innerHTML = 'Paylaşımlı Liste <span class="list-type-badge shared">Ortak</span>';
+            document.getElementById('roomCodeBtn').style.display = 'block';
+            document.getElementById('fab').style.display = 'flex';
+            startListeningToItems();
+        };
+
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 currentUser = user;
@@ -1581,6 +1760,7 @@
                         notificationsMuted: false,
                         currentListType: 'personal',
                         currentRoomId: null,
+                        joinedRooms: [],
                         createdAt: serverTimestamp()
                     });
                 }
@@ -1619,6 +1799,7 @@
             document.getElementById('colorPreview').style.background = currentUser.color || '#FFC107';
             document.getElementById('notificationsStatus').textContent = currentUser.notificationsMuted ? 'Kapalı' : 'Açık';
             document.getElementById('notificationsBtn').classList.toggle('active', !currentUser.notificationsMuted);
+            loadMyLists();
             showScreen('dashboardScreen');
             document.getElementById('fab').style.display = 'none';
         };
@@ -1711,6 +1892,7 @@
                     colorName: colorName,
                     joinedAt: serverTimestamp()
                 });
+                await addRoomToUser(roomId);
                 await saveUserData({ currentListType: 'shared', currentRoomId: roomId });
                 currentListType = 'shared';
                 currentRoomId = roomId;
@@ -1744,6 +1926,7 @@
                     colorName: colorName,
                     joinedAt: serverTimestamp()
                 });
+                await addRoomToUser(roomId);
                 await saveUserData({ currentListType: 'shared', currentRoomId: roomId });
                 currentListType = 'shared';
                 currentRoomId = roomId;
@@ -1880,7 +2063,6 @@
             }).join('');
         }
 
-        // Edit Modal Fonksiyonları
         window.openEditModal = function(itemId, ad, emoji, miktar, birim, not, acil, alindi) {
             editingItemId = itemId;
             editQuantity = miktar;
@@ -1893,7 +2075,6 @@
             document.getElementById('editUrgentCheck').checked = acil;
             document.getElementById('editBoughtCheck').checked = alindi;
             
-            // Birim butonlarını ayarla
             document.querySelectorAll('#editUnitSelector .unit-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.unit === birim);
             });
@@ -2015,7 +2196,7 @@
                 }
 
                 if (!currentUser.notificationsMuted) {
-                    showToast("Ürün eklendi! ");
+                    showToast("Ürün eklendi! 🛒");
                     playNotificationSound();
                 }
 
