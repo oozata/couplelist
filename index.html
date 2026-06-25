@@ -1600,7 +1600,6 @@
     <div class="toast" id="toast"></div>
 
     <script type="module">
-        // Firebase kodları aynı kalacak (önceki kodun aynısı)
         import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, getDoc, deleteDoc, onSnapshot, query, orderBy, serverTimestamp, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
@@ -2411,7 +2410,8 @@
                     acil: document.getElementById('urgentCheck').checked,
                     alindi: false,
                     ekleyen: currentListType === 'shared' ? currentUser.displayName : null,
-                    color: currentUser.colorName || 'yellow',
+                    color: currentUser.color,  // ✅ DÜZELTİLDİ: Hex kodu kullan
+                    colorName: currentUser.colorName || 'yellow',  // ✅ DÜZELTİLDİ: Renk adı kullan
                     createdAt: serverTimestamp(),
                     lastModified: serverTimestamp()
                 };
@@ -2437,7 +2437,8 @@
                     acil: document.getElementById('urgentCheck2').checked,
                     alindi: false,
                     ekleyen: currentListType === 'shared' ? currentUser.displayName : null,
-                    color: currentUser.colorName || 'yellow',
+                    color: currentUser.color,  // ✅ DÜZELTİLDİ: Hex kodu kullan
+                    colorName: currentUser.colorName || 'yellow',  // ✅ DÜZELTİLDİ: Renk adı kullan
                     createdAt: serverTimestamp(),
                     lastModified: serverTimestamp()
                 };
@@ -2491,4 +2492,4 @@
         loadProducts();
     </script>
 </body>
-</html>
+</html
